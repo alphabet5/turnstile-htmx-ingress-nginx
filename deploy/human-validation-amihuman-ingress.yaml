@@ -31,7 +31,7 @@ metadata:
           ngx.log(ngx.ERR, res.body)
           local stat = cjson.decode(res.body)["success"]
           if not stat then
-              ngx.say("ಠ_ಠ")
+              ngx.say("<div title=\"Refresh the page to check again, the token only works once.\">ಠ_ಠ</div>")
               return ngx.exit(ngx.HTTP_OK)
           else
               ngx.say("You're probably human! Good luck.")
