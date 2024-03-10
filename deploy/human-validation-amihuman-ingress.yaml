@@ -1,0 +1,57 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: human-validation
+  annotations:
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      lua_ssl_verify_depth 5;
+      lua_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+      resolver kube-dns.kube-system ipv6=off valid=60;
+      access_by_lua_block {
+          ngx.req.read_body()
+          local args, err = ngx.req.get_post_args(1)
+          if not args or not args["cf-turnstile-response"] then
+              ngx.say("Try harder, bot.")
+              return ngx.exit(ngx.HTTP_OK)
+          end
+          local httpc = require("resty.http").new()
+          local res, err = httpc:request_uri("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+              method = "POST",
+              body = "secret="..os.getenv("MANAGED_SECRET").."&response="..args["cf-turnstile-response"],
+              headers = {
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+          })
+          if err then
+              ngx.say("Houston, we have a problem.")
+              return ngx.exit(ngx.HTTP_OK)
+          end
+          local cjson = require "cjson"
+          ngx.log(ngx.ERR, res.body)
+          local stat = cjson.decode(res.body)["success"]
+          if not stat then
+              ngx.say("ಠ_ಠ")
+              return ngx.exit(ngx.HTTP_OK)
+          else
+              ngx.say("You're probably human! Good luck.")
+              return ngx.exit(ngx.HTTP_OK)
+          end
+      }
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "human.alphabet5.dev"
+    http:
+      paths:
+      - path: /amihuman
+        pathType: Exact
+        backend:
+          service:
+            name: human
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - human.alphabet5.dev
+    secretName: human-alphabet5-dev-tls

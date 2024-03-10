@@ -1,0 +1,24 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: human-server
+  annotations:
+    cert-manager.io/issuer: "letsencrypt"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "human.alphabet5.dev"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: human
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - human.alphabet5.dev
+    secretName: human-alphabet5-dev-tls
